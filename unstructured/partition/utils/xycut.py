@@ -235,12 +235,13 @@ def vis_points(
             -1,
         )
 
+        font_scale = 2
         img = cv2.putText(
             img,
             txt,
             (cx - 5 * len(txt), cy - 5),
             font,
-            0.5,
+            font_scale,
             (255, 255, 255),
             thickness=1,
             lineType=cv2.LINE_AA,
