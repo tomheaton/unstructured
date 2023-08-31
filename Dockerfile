@@ -63,7 +63,7 @@ RUN python3.10 -c "import nltk; nltk.download('punkt')" && \
 FROM deps as code
 
 # NOTE(crag): temporary workaround until updated base image has this
-RUN ln -s /usr/local/bin/python3.10 /usr/local/bin/python3
+RUN rm -f /usr/local/bin/python3 && ln -s /usr/local/bin/python3.10 /usr/local/bin/python3
 
 USER ${NB_USER}
 
