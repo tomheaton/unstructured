@@ -92,6 +92,7 @@ class DatabricksVolumesDestinationConnector(BaseDestinationConnector):
         return self._client
 
     def check_connection(self):
+        # add check for connection
         pass
 
     def initialize(self):
