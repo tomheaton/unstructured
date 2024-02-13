@@ -12,20 +12,27 @@ from typing import Any, Callable
 from typing_extensions import ParamSpec
 
 from unstructured.chunking.base import CHUNK_MAX_CHARS_DEFAULT, CHUNK_MULTI_PAGE_DEFAULT
-from unstructured.chunking.basic import chunk_elements
-from unstructured.chunking.title import chunk_by_title
+from unstructured.chunking.dispatch import Chunker, ChunkerSpec, chunk, register_chunking_strategy
 from unstructured.documents.elements import Element
 
-__all__ = ["CHUNK_MAX_CHARS_DEFAULT", "CHUNK_MULTI_PAGE_DEFAULT", "add_chunking_strategy"]
+__all__ = [
+    "CHUNK_MAX_CHARS_DEFAULT",
+    "CHUNK_MULTI_PAGE_DEFAULT",
+    "add_chunking_strategy",
+    # -- these must be published to allow pluggable chunkers in other code-bases --
+    "Chunker",
+    "ChunkerSpec",
+    "register_chunking_strategy",
+]
 
 _P = ParamSpec("_P")
 
 
 def add_chunking_strategy(func: Callable[_P, list[Element]]) -> Callable[_P, list[Element]]:
-    """Decorator for chunking text.
+    """Decorator allowing chunking to be specified directly in partition call.
 
     Chunks the element sequence produced by the partitioner it decorates when a `chunking_strategy`
-    argument is present in the partitioner call and it names an available chunking strategy.
+    argument is present in the partitioner call that names an available chunking strategy.
     """
     # -- Patch the docstring of the decorated function to add chunking strategy and
     # -- chunking-related argument documentation. This only applies when `chunking_strategy`
@@ -67,29 +74,15 @@ def add_chunking_strategy(func: Callable[_P, list[Element]]) -> Callable[_P, lis
         # -- call the partitioning function to get the elements --
         elements = func(*args, **kwargs)
 
-        # -- look for a chunking-strategy argument and run the indicated chunker when present --
+        # -- look for a chunking-strategy argument --
         call_args = get_call_args_applying_defaults()
+        chunking_strategy = call_args.pop("chunking_strategy", None)
 
-        if call_args.get("chunking_strategy") == "by_title":
-            return chunk_by_title(
-                elements,
-                combine_text_under_n_chars=call_args.get("combine_text_under_n_chars"),
-                max_characters=call_args.get("max_characters"),
-                multipage_sections=call_args.get("multipage_sections"),
-                new_after_n_chars=call_args.get("new_after_n_chars"),
-                overlap=call_args.get("overlap"),
-                overlap_all=call_args.get("overlap_all"),
-            )
+        # -- no chunking-strategy means no chunking --
+        if chunking_strategy is None:
+            return elements
 
-        if call_args.get("chunking_strategy") == "basic":
-            return chunk_elements(
-                elements,
-                max_characters=call_args.get("max_characters"),
-                new_after_n_chars=call_args.get("new_after_n_chars"),
-                overlap=call_args.get("overlap"),
-                overlap_all=call_args.get("overlap_all"),
-            )
-
-        return elements
+        # -- otherwise, chunk away :) --
+        return chunk(elements, chunking_strategy, **call_args)
 
     return wrapper
